@@ -6,9 +6,7 @@
 
 
     <item android:id="@android:id/progress">
-        <clip>
-             <color android:color='@color/minebutton_color'/>
-        </clip>
+        <clip android:drawable="@drawable/kp_progress_fill" />
     </item>
 
 </layer-list>

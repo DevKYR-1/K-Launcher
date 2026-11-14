@@ -3,13 +3,26 @@
     <color name="control_button_color">#4CC4C4C4</color>
     <color name="control_button_pressed_color">#4D000000</color>
 
-    <color name="minebutton_color">#57CC33</color>
-    <color name="background_app">#181818</color>
+    <!-- K-Projects palette, sampled from the logo -->
+    <color name="kp_magenta">#E804E1</color>
+    <color name="kp_magenta_soft">#F26BF0</color>
+    <color name="kp_violet">#7303D5</color>
+    <color name="kp_violet_bright">#B62EFD</color>
+    <color name="kp_indigo">#4A12E0</color>
+    <color name="kp_glow">#FDE5FD</color>
+    <color name="kp_surface_button">#2A1259</color>
+    <color name="kp_control_normal">#8F7BBF</color>
+    <color name="kp_ripple">#40E804E1</color>
+    <color name="kp_line_unselected">#6A5A92</color>
+
+    <color name="minebutton_color">@color/kp_magenta</color>
+    <color name="background_app">#08030F</color>
     <color name="divider">@color/background_overlay</color>
-    <color name="background_overlay">#464646</color>
-    <color name="background_status_bar">#242424</color>
-    <color name="background_bottom_bar">#232323</color>
+    <color name="background_overlay">#3A1A6B</color>
+    <color name="background_status_bar">#10061E</color>
+    <color name="background_bottom_bar">#14082A</color>
+    <color name="background_menu">#160D2B</color>
 
     <color name="primary_text">#FFFFFF</color>
-    <color name="secondary_text">#B2B2B2</color>
+    <color name="secondary_text">#BDA7E6</color>
 </resources>

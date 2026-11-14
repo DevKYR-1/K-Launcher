@@ -1,3 +1,20 @@
+<p align="center"><img src="./branding/k-projects-logo.png" width="240" alt="K-Projects logo"></p>
+
+<h1 align="center">K-Projects</h1>
+
+**K-Projects is a re-skinned build of [PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher)**, which is based on [Boardwalk](https://github.com/zhuowei/Boardwalk).
+Only the interface was changed: neon theme, button graphics, icons, app name and an animated logo. No launcher, login or game code was touched.
+See [NOTICE-K-Projects.md](./NOTICE-K-Projects.md) for the list of changes and what the LGPLv3 asks of you.
+K-Projects is not affiliated with Mojang, Microsoft or the PojavLauncher team.
+
+**Heads-up:** upstream PojavLauncher is discontinued (see the original notice below), so this build gets no upstream fixes and Minecraft versions newer than 1.21 may not run.
+
+**Build:** follow *Building* below (`./gradlew :app_pojavlauncher:assembleDebug`), or run the *Android CI* workflow in your fork's *Actions* tab and download the `app-debug` artifact. Both routes download the JRE and LTW from the PojavLauncher team's repositories.
+
+---
+
+*The original PojavLauncher README follows.*
+
 <h1 align="center">PojavLauncher</h1>
 
 <img src="https://github.com/PojavLauncherTeam/PojavLauncher/blob/v3_openjdk/app_pojavlauncher/src/main/assets/pojavlauncher.png" align="left" width="130" height="150" alt="PojavLauncher logo">

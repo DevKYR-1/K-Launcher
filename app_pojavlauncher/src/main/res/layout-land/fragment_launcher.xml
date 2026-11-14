@@ -28,13 +28,34 @@
                 android:layout_height="0dp"
                 android:orientation="vertical"
                 app:layout_constraintGuide_percent="0.5"/>
+            <net.kdt.pojavlaunch.kprojects.AnimatedLogoView
+                android:id="@+id/kp_logo"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/kp_logo_height"
+                android:contentDescription="@string/app_short_name"
+                app:layout_constraintTop_toTopOf="parent" />
+            <TextView
+                android:id="@+id/kp_credit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:autoLink="web"
+                android:gravity="center"
+                android:linksClickable="true"
+                android:paddingStart="@dimen/padding_large"
+                android:paddingEnd="@dimen/padding_large"
+                android:text="@string/kp_credit"
+                android:textColor="@color/secondary_text"
+                android:textColorLink="@color/kp_magenta_soft"
+                android:textSize="11sp"
+                app:layout_constraintTop_toBottomOf="@id/kp_logo" />
             <com.kdt.mcgui.LauncherMenuButton
                 android:id="@+id/news_button"
                 style="@style/LauncherMenuButton.Universal"
                 android:layout_width="0dp"
                 android:drawableStart="@drawable/ic_menu_news"
                 android:text="@string/mcl_tab_wiki"
-                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/kp_credit"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/social_divider"/>
             <View
@@ -51,7 +72,7 @@
                 android:layout_width="0dp"
                 android:drawableStart="@drawable/ic_discord"
                 android:text="@string/mcl_button_discord"
-                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/kp_credit"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/social_divider"/>
 
@@ -135,6 +156,11 @@
 
         android:translationZ="-1dp"
         app:layout_constraintTop_toTopOf="@id/mc_version_spinner" />
+    <net.kdt.pojavlaunch.kprojects.NeonStripView
+        android:id="@+id/kp_bottom_strip"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/kp_strip_height"
+        app:layout_constraintTop_toTopOf="@id/_background_display_view" />
 
     <com.kdt.mcgui.MineButton
         android:id="@+id/play_button"

@@ -9,6 +9,14 @@
         <item name="android:navigationBarColor">@color/background_app</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
 
+        <item name="colorPrimary">@color/kp_violet</item>
+        <item name="colorPrimaryDark">@color/background_status_bar</item>
+        <item name="colorAccent">@color/kp_magenta</item>
+        <item name="colorControlNormal">@color/kp_control_normal</item>
+        <item name="colorControlActivated">@color/kp_magenta</item>
+        <item name="colorControlHighlight">@color/kp_ripple</item>
+        <item name="colorButtonNormal">@color/kp_surface_button</item>
+
         <item name="android:textSize">@dimen/_12ssp</item>
 
     </style>
