@@ -1,5 +1,11 @@
 name: Android CI
 
+# K-Projects note: this is the upstream PojavLauncher workflow with these changes only:
+#  - the Java runtimes come from the AngelAuraMC build repository, because the artifacts of the old
+#    PojavLauncherTeam JRE builds have expired and can no longer be downloaded;
+#  - the Google Play / "no runtime" steps were removed (they only run for the upstream organisation);
+#  - the debug APK is uploaded right after it is built.
+
 on:
   pull_request:
     branches-ignore:
@@ -39,30 +45,10 @@ jobs:
         with:
           workflow: build.yml
           path: app_pojavlauncher/src/main/assets/components/jre
-          workflow_conclusion: success
-          repo: PojavLauncherTeam/android-openjdk-build-multiarch
+          workflow_conclusion: completed
+          repo: AngelAuraMC/angelauramc-openjdk-build
           branch: buildjre8
           name: jre8-pojav
-
-      - name: Get JRE17
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre-new
-          workflow_conclusion: success
-          repo: PojavLauncherTeam/android-openjdk-build-multiarch
-          branch: buildjre17-21
-          name: jre17-pojav
-
-      - name: Get JRE21
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre-21
-          workflow_conclusion: success
-          repo: PojavLauncherTeam/android-openjdk-build-multiarch
-          branch: buildjre17-21
-          name: jre21-pojav
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -82,11 +68,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build Google Play .aab
-        if: github.repository_owner == 'PojavLauncherTeam' && github.ref_name == 'v3_openjdk'
-        run: |
-          gradle :app_pojavlauncher:bundleGplay
-          mv app_pojavlauncher/build/outputs/bundle/gplay/app_pojavlauncher-gplay.aab out/app-gplay.aab
+      - name: Show bundled runtimes
+        run: ls -lh app_pojavlauncher/src/main/assets/components/jre* || true
 
       - name: Build Debug .apk
         run: |
@@ -94,44 +77,12 @@ jobs:
           gradle :app_pojavlauncher:assembleDebug
           mv app_pojavlauncher/build/outputs/apk/debug/app_pojavlauncher-debug.apk out/app-debug.apk
 
-      - name: Build APK without runtime
-        run: |
-          rm -r app_pojavlauncher/src/main/assets/components/jre
-          rm -r app_pojavlauncher/src/main/assets/components/jre-new
-          rm -r app_pojavlauncher/src/main/assets/components/jre-21
-          gradle assembleDebug
-          mv app_pojavlauncher/build/outputs/apk/debug/app_pojavlauncher-debug.apk out/app-debug-noruntime.apk
       - name: Gen md5sums
         run: |
           md5sum out/app-debug.apk > out/app-debug.md5
-          md5sum out/app-debug-noruntime.apk > out/app-debug-noruntime.md5
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: out/app-debug.*
-
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: out/app-gplay.aab
-
-      - name: Upload onto the Google Play testing track
-        continue-on-error: true
-        if: github.repository_owner == 'PojavLauncherTeam' && github.ref_name == 'v3_openjdk'
-        uses: r0adkll/upload-google-play@v1.1.2
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GPLAY_SERVICE_JSON }}
-          packageName: net.kdt.pojavlaunch
-          releaseFiles: out/app-gplay.aab
-          track: internal
-          inAppUpdatePriority: 5
-
-      - name: Upload APK (without runtime)
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug-noruntime
-          path: out/app-debug-noruntime.*
-
