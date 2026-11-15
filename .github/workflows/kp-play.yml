@@ -1,0 +1,62 @@
+name: KP play test (emulator)
+
+# Installs the latest pre-release APK in an Android emulator, creates a local account, presses PLAY
+# and checks that the Java game process starts. Informational only: it does not change the app.
+# Output (screenshots, game log) is pushed to the "ci-play" branch.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ k-projects-ui ]
+    paths:
+      - '.github/workflows/kp-play.yml'
+      - '.github/kp/play.sh'
+
+jobs:
+  play:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the APK from the pre-release
+        run: |
+          curl -fL --retry 3 -o app.apk "https://github.com/${{ github.repository }}/releases/download/k-projects-latest/K-Projects-debug.apk"
+          ls -lh app.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Play in an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_5
+          cores: 4
+          ram-size: 4096M
+          disk-size: 8192M
+          emulator-boot-timeout: 900
+          script: bash .github/kp/play.sh app.apk play-out
+
+      - name: Publish output to the ci-play branch
+        if: always()
+        run: |
+          set -e
+          test -d play-out || { echo "no play-out folder"; exit 0; }
+          mkdir -p "$RUNNER_TEMP/out"
+          cp play-out/* "$RUNNER_TEMP/out/" 2>/dev/null || true
+          cd "$RUNNER_TEMP/out"
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b ci-play
+          git add -A
+          git commit -q -m "Emulator play test output for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-play
