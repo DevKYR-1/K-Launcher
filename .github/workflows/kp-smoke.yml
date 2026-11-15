@@ -1,0 +1,61 @@
+name: KP smoke test (emulator)
+
+# Installs the latest pre-release APK in an Android emulator, starts it, takes screenshots and
+# checks the log for crashes. Informational only: it does not change the app.
+# Screenshots are pushed to the "ci-screenshots" branch.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ k-projects-ui ]
+    paths:
+      - '.github/workflows/kp-smoke.yml'
+      - '.github/kp/**'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the APK from the pre-release
+        run: |
+          curl -fL --retry 3 -o app.apk "https://github.com/${{ github.repository }}/releases/download/k-projects-latest/K-Projects-debug.apk"
+          ls -lh app.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the app in an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_5
+          ram-size: 3072M
+          disk-size: 4096M
+          emulator-boot-timeout: 900
+          script: bash .github/kp/smoke.sh app.apk smoke-out
+
+      - name: Publish screenshots to the ci-screenshots branch
+        if: always()
+        run: |
+          set -e
+          test -d smoke-out || { echo "no smoke-out folder"; exit 0; }
+          mkdir -p "$RUNNER_TEMP/shots"
+          cp smoke-out/* "$RUNNER_TEMP/shots/" 2>/dev/null || true
+          cd "$RUNNER_TEMP/shots"
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b ci-screenshots
+          git add -A
+          git commit -q -m "Emulator smoke test output for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-screenshots
