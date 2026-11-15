@@ -1,10 +1,11 @@
 name: Android CI
 
 # K-Projects note: this is the upstream PojavLauncher workflow with these changes only:
-#  - the Java runtimes come from the AngelAuraMC build repository, because the artifacts of the old
-#    PojavLauncherTeam JRE builds have expired and can no longer be downloaded;
+#  - the Java 8 / 17 / 21 runtimes are taken from the last official PojavLauncher release APK
+#    ("gladiolus"), because the artifacts of the PojavLauncherTeam JRE builds have expired and can
+#    no longer be downloaded;
 #  - the Google Play / "no runtime" steps were removed (they only run for the upstream organisation);
-#  - the debug APK is uploaded right after it is built.
+#  - the debug APK is uploaded right after it is built and also attached to a pre-release.
 
 on:
   pull_request:
@@ -19,6 +20,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     env:
       GPLAY_KEYSTORE_PASSWORD: ${{ secrets.GPLAY_KEYSTORE_PASSWORD }}
       CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
@@ -40,15 +43,29 @@ jobs:
           cd app_pojavlauncher/libs
           wget https://github.com/PojavLauncherTeam/LTW/releases/latest/download/ltw-release.aar
 
-      - name: Get JRE 8
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre
-          workflow_conclusion: completed
-          repo: AngelAuraMC/angelauramc-openjdk-build
-          branch: buildjre8
-          name: jre8-pojav
+      - name: Get Java 8 / 17 / 21 runtimes (official PojavLauncher release)
+        run: |
+          set -euo pipefail
+          tmp="$RUNNER_TEMP/pojav-release"
+          assets=app_pojavlauncher/src/main/assets/components
+          mkdir -p "$tmp"
+          curl -fL --retry 3 --retry-delay 5 -o "$tmp/PojavLauncher.apk" \
+            "https://github.com/PojavLauncherTeam/PojavLauncher/releases/download/gladiolus/PojavLauncher.apk"
+          ls -lh "$tmp/PojavLauncher.apk"
+          echo "--- runtime files inside the official APK:"
+          unzip -l "$tmp/PojavLauncher.apk" | grep -E 'assets/components/(jre|jre-new|jre-21)/' || true
+          unzip -q -o "$tmp/PojavLauncher.apk" \
+            'assets/components/jre/*' 'assets/components/jre-new/*' 'assets/components/jre-21/*' \
+            -d "$tmp/x"
+          for d in jre jre-new jre-21; do
+            mkdir -p "$assets/$d"
+            cp -r "$tmp/x/assets/components/$d/." "$assets/$d/"
+            for f in universal.tar.xz version bin-arm64.tar.xz; do
+              test -s "$assets/$d/$f" || { echo "::error::missing $d/$f"; exit 1; }
+            done
+          done
+          rm -rf "$tmp"
+          ls -lh "$assets"/jre "$assets"/jre-new "$assets"/jre-21
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -68,9 +85,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Show bundled runtimes
-        run: ls -lh app_pojavlauncher/src/main/assets/components/jre* || true
-
       - name: Build Debug .apk
         run: |
           # Build the launcher
@@ -86,3 +100,27 @@ jobs:
         with:
           name: app-debug
           path: out/app-debug.*
+
+      - name: Publish pre-release with the APK
+        if: github.ref == 'refs/heads/k-projects-ui'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=k-projects-latest
+          cp out/app-debug.apk out/K-Projects-debug.apk
+          cat > "$RUNNER_TEMP/notes.md" <<'EOF'
+          **K-Projects** - debug build of a re-skinned [PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher) (LGPLv3).
+          Only the interface was changed. Source code: this repository, branch `k-projects-ui`. See `NOTICE-K-Projects.md` for the list of changes and the credits.
+
+          - Installs next to the original PojavLauncher (package `net.kdt.pojavlaunch.debug`).
+          - Upstream PojavLauncher is discontinued, so very new Minecraft versions may not run.
+          - Not affiliated with Mojang, Microsoft or the PojavLauncher team.
+
+          Turkce: `K-Projects-debug.apk` dosyasini indirip kur (telefon "bilinmeyen kaynaklardan yukleme" izni isteyebilir).
+          EOF
+          gh release delete "$tag" --yes --cleanup-tag || true
+          gh release create "$tag" out/K-Projects-debug.apk \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "K-Projects debug build (latest)" \
+            --notes-file "$RUNNER_TEMP/notes.md"
