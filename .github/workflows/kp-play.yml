@@ -8,7 +8,7 @@ name: KP play test (emulator)
 # Output (screenshots, UI dumps, logs) is pushed to the "ci-play-<version>" branches.
 #
 # When the commit that triggered this run also changed the app, the Android CI builds it and publishes the APK.
-# This job waits for that build, so it always tests the APK of the commit and not the one of an older build.
+# This job waits for the running build first, so it tests the new APK and not the one of an older build.
 
 on:
   workflow_dispatch:
@@ -32,31 +32,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Wait for the build of this commit, then download its APK
+      - name: Wait for the running build, then download the APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -u
           repo="${{ github.repository }}"
-          sha="${{ github.sha }}"
-          missing=0
+          # The Android CI of this very commit (if the commit changed app files) takes a few seconds to show up
+          sleep 45
+          unknown=0
           for i in $(seq 1 90); do
-            line="$(gh run list -R "$repo" --workflow android.yml --commit "$sha" --limit 1 \
-                      --json status,conclusion --jq 'if length == 0 then "none none" else "\(.[0].status) \(.[0].conclusion)" end' 2>/dev/null || echo "unknown unknown")"
-            set -- $line
-            status="$1"; conclusion="$2"
-            echo "Android CI of $sha: status=$status conclusion=$conclusion (check $i)"
-            if [ "$status" = completed ]; then
-              [ "$conclusion" = success ] || { echo "the build of this commit did not succeed, nothing to test"; exit 1; }
-              break
-            fi
-            if [ "$status" = none ] || [ "$status" = unknown ]; then
-              missing=$((missing + 1))
-              # no build for this commit (only the test files changed): test the APK that is published
-              [ "$missing" -ge 3 ] && break
+            running="$(gh run list -R "$repo" --workflow android.yml --branch k-projects-ui --limit 5 \
+                         --json status --jq '[.[] | select(.status != "completed")] | length' 2>/dev/null || echo unknown)"
+            echo "Android CI builds still running on k-projects-ui: $running (check $i)"
+            if [ "$running" = 0 ]; then break; fi
+            if [ "$running" = unknown ]; then
+              unknown=$((unknown + 1))
+              [ "$unknown" -ge 3 ] && break
             fi
             sleep 30
           done
+          last="$(gh run list -R "$repo" --workflow android.yml --branch k-projects-ui --limit 1 \
+                    --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo unknown)"
+          echo "conclusion of the latest Android CI build: $last"
+          if [ "$last" != success ] && [ "$last" != unknown ]; then
+            echo "the latest build did not succeed, so there is no new APK to test"
+            exit 1
+          fi
           curl -fL --retry 3 -o app.apk "https://github.com/$repo/releases/download/k-projects-latest/K-Projects-debug.apk"
           ls -lh app.apk
 
