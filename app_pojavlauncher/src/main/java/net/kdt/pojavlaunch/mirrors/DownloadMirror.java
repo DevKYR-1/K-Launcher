@@ -37,15 +37,26 @@ public class DownloadMirror {
      */
     public static void downloadFileMirrored(int downloadClass, String urlInput, File outputFile,
                                             @Nullable byte[] buffer, Tools.DownloaderFeedback monitor) throws IOException {
+        String mirrorUrl = getMirrorMapping(downloadClass, urlInput);
         try {
-            DownloadUtils.downloadFileMonitored(getMirrorMapping(downloadClass, urlInput),
-                    outputFile, buffer, monitor);
+            DownloadUtils.downloadFileMonitored(mirrorUrl, outputFile, buffer, monitor);
             return;
-        }catch (FileNotFoundException e) {
-            Log.w("DownloadMirror", "Cannot find the file on the mirror", e);
-            Log.i("DownloadMirror", "Falling back to default source");
+        }catch (IOException e) {
+            // Without a mirror there is no other source to ask
+            if(mirrorUrl.equals(urlInput)) throw e;
+            logFallback(e);
         }
         DownloadUtils.downloadFileMonitored(urlInput, outputFile, buffer, monitor);
+    }
+
+    /** A mirror that is down, rate limited or missing a file must not stop the download of an official file */
+    private static void logFallback(IOException e) {
+        if(e instanceof FileNotFoundException) {
+            Log.w("DownloadMirror", "Cannot find the file on the mirror", e);
+        } else {
+            Log.w("DownloadMirror", "The mirror failed to deliver the file", e);
+        }
+        Log.i("DownloadMirror", "Falling back to default source");
     }
 
     /**
@@ -57,13 +68,13 @@ public class DownloadMirror {
      * @param outputFile The output file for the download
      */
     public static void downloadFileMirrored(int downloadClass, String urlInput, File outputFile) throws IOException {
+        String mirrorUrl = getMirrorMapping(downloadClass, urlInput);
         try {
-            DownloadUtils.downloadFile(getMirrorMapping(downloadClass, urlInput),
-                    outputFile);
+            DownloadUtils.downloadFile(mirrorUrl, outputFile);
             return;
-        }catch (FileNotFoundException e) {
-            Log.w("DownloadMirror", "Cannot find the file on the mirror", e);
-            Log.i("DownloadMirror", "Falling back to default source");
+        }catch (IOException e) {
+            if(mirrorUrl.equals(urlInput)) throw e;
+            logFallback(e);
         }
         DownloadUtils.downloadFile(urlInput, outputFile);
     }
@@ -77,14 +88,21 @@ public class DownloadMirror {
      * @return the length of the file denoted by the URL in bytes, or -1 if not available
      */
     public static long getContentLengthMirrored(int downloadClass, String urlInput) throws IOException {
-        long length = DownloadUtils.getContentLength(getMirrorMapping(downloadClass, urlInput));
-        if(length < 1) {
+        String mirrorUrl = getMirrorMapping(downloadClass, urlInput);
+        long length = -1;
+        try {
+            length = DownloadUtils.getContentLength(mirrorUrl);
+        }catch (IOException e) {
+            if(mirrorUrl.equals(urlInput)) throw e;
+            Log.w("DownloadMirror", "Unable to reach the mirror to get the content length", e);
+        }
+        // Without a mirror, the original source was already asked
+        if(length < 1 && !mirrorUrl.equals(urlInput)) {
             Log.w("DownloadMirror", "Unable to get content length from mirror");
             Log.i("DownloadMirror", "Falling back to default source");
             return DownloadUtils.getContentLength(urlInput);
-        }else {
-            return length;
         }
+        return length;
     }
 
     /**
@@ -97,9 +115,11 @@ public class DownloadMirror {
      */
     public static String downloadStringMirrored(int downloadClass, String urlInput) throws IOException{
         String resultString = null;
+        String mirrorUrl = getMirrorMapping(downloadClass, urlInput);
         try {
-            resultString = DownloadUtils.downloadString(getMirrorMapping(downloadClass,urlInput));
-        }catch (FileNotFoundException e) {
+            resultString = DownloadUtils.downloadString(mirrorUrl);
+        }catch (IOException e) {
+            if(mirrorUrl.equals(urlInput)) throw e;
             Log.w("DownloadMirror", "Failed to download string from mirror", e);
         }
         if(Tools.isValidString(resultString)) {

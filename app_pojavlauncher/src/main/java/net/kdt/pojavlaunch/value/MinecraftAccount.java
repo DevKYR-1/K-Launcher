@@ -44,6 +44,32 @@ public class MinecraftAccount {
         }
     }
 
+    /** How long a Minecraft services token is valid when the server does not say */
+    public static final long DEFAULT_SESSION_LIFETIME_SECONDS = 86400L;
+    /** The session is renewed a bit early, so a game never starts with a token that is about to stop working */
+    private static final long SESSION_EXPIRY_MARGIN_MILLIS = 5 * 60 * 1000L;
+
+    /**
+     * @param now the time the token was received, in milliseconds
+     * @param lifetimeSeconds how long the server says that the token is valid. Zero or less means "unknown".
+     * @return the time after which the session counts as expired and has to be renewed
+     */
+    public static long computeSessionExpiry(long now, long lifetimeSeconds) {
+        if(lifetimeSeconds <= 0) lifetimeSeconds = DEFAULT_SESSION_LIFETIME_SECONDS;
+        long lifetimeMillis = lifetimeSeconds * 1000L;
+        // A very short lifetime must not be eaten up by the margin
+        return now + Math.max(lifetimeMillis - SESSION_EXPIRY_MARGIN_MILLIS, lifetimeMillis / 2);
+    }
+
+    /**
+     * @param now the current time in milliseconds
+     * @return whether this is a Microsoft account whose Minecraft token has to be renewed before it is used.
+     *         A Local account has no session, so its session never expires.
+     */
+    public boolean isSessionExpired(long now) {
+        return isMicrosoft && now > expiresAt;
+    }
+
     public boolean isLocal(){
         return accessToken.equals("0") && !username.startsWith("Demo.");
     }

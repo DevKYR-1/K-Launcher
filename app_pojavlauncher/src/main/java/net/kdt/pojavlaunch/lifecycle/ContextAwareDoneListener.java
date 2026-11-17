@@ -13,14 +13,16 @@ import net.kdt.pojavlaunch.lifecycle.ContextExecutor;
 import net.kdt.pojavlaunch.lifecycle.ContextExecutorTask;
 import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
 import net.kdt.pojavlaunch.tasks.AsyncMinecraftDownloader;
+import net.kdt.pojavlaunch.utils.DownloadErrors;
 import net.kdt.pojavlaunch.utils.NotificationUtils;
 
 public class ContextAwareDoneListener implements AsyncMinecraftDownloader.DoneListener, ContextExecutorTask {
-    private final String mErrorString;
+    // The application context: unlike an activity, it can be kept without leaking anything
+    private final Context mApplicationContext;
     private final String mNormalizedVersionid;
 
     public ContextAwareDoneListener(Context baseContext, String versionId) {
-        this.mErrorString = baseContext.getString(R.string.mc_download_failed);
+        this.mApplicationContext = baseContext.getApplicationContext();
         this.mNormalizedVersionid = versionId;
     }
 
@@ -38,7 +40,11 @@ public class ContextAwareDoneListener implements AsyncMinecraftDownloader.DoneLi
 
     @Override
     public void onDownloadFailed(Throwable throwable) {
-        Tools.showErrorRemote(mErrorString, throwable);
+        // The dialog shows a message that says what happened and what to do (no internet, file not
+        // found, verification failed...) instead of a stack trace. The stack trace is behind "Show more",
+        // and the launcher log has it as well. A failure that has a dialog of its own (a Local account that
+        // needs a Microsoft login) shows that one.
+        Tools.showErrorRemote(DownloadErrors.describe(mApplicationContext, throwable), throwable);
     }
 
     @Override

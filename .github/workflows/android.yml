@@ -88,6 +88,19 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # K-Projects: tests of the download engine (HTTP statuses, retries, SHA-1, half downloaded files),
+      # the account/session rules and the error messages. They run against a local HTTP server, no internet needed.
+      - name: Unit tests
+        run: gradle :app_pojavlauncher:testDebugUnitTest
+
+      - name: Upload unit test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: app_pojavlauncher/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore
+
       - name: Build Debug .apk
         run: |
           # Build the launcher
@@ -113,9 +126,12 @@ jobs:
           cp out/app-debug.apk out/K-Projects-debug.apk
           cat > "$RUNNER_TEMP/notes.md" <<'EOF'
           **K-Projects** - debug build of a re-skinned [PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher) (LGPLv3).
-          Only the interface was changed. Source code: this repository, branch `k-projects-ui`. See `NOTICE-K-Projects.md` for the list of changes and the credits.
+          The interface is new. The game download and the account/login code were also repaired: clear messages instead of stack traces,
+          retries, SHA-1 checks, a log file (`launcher-log.txt`) and Microsoft session handling. Source code: this repository, branch `k-projects-ui`.
+          See `NOTICE-K-Projects.md` for the list of changes and the credits.
 
           - Installs next to the original PojavLauncher (package `net.kdt.pojavlaunch.debug`).
+          - A Local account cannot download game files (rule of the launcher): sign in once with a Microsoft account that owns Minecraft: Java Edition and press Play to download a version.
           - Upstream PojavLauncher is discontinued, so very new Minecraft versions may not run.
           - Not affiliated with Mojang, Microsoft or the PojavLauncher team.
 

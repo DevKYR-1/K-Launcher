@@ -431,4 +431,27 @@
     <string name="bta_installer_nightly_versions">Nightly BTA versions</string>
     <string name="newdl_extracting_native_libraries">Extracting native libraries (%d/%d)</string>
     <string name="toast_not_available_demo">This is not available in demo mode</string>
+
+    <!-- K-Projects: understandable download and login errors (shown instead of a stack trace) -->
+    <string name="dl_err_local_title">Microsoft account required</string>
+    <string name="dl_err_local_account">This Minecraft version is not completely installed on this device (%1$d file(s) missing or damaged). A Local account can only start versions that are already installed, it cannot download game files.\n\nSign in with a Microsoft account that owns Minecraft: Java Edition and press Play once to download the version. After that you can start it offline with your Local account.\n\nWithout the game, a Microsoft account can only use the Demo mode.</string>
+    <string name="dl_err_local_login">Microsoft login</string>
+    <string name="dl_err_local_short">A Local account cannot download game files. Sign in with a Microsoft account that owns Minecraft to download this version.</string>
+    <string name="dl_err_no_internet">The download server cannot be reached. Check your internet connection and try again.</string>
+    <string name="dl_err_file_unavailable">A game file was not found on the download server (HTTP 404). Try again later or change the download source in the settings.</string>
+    <string name="dl_err_access_denied">The download server refused the request (access denied). Try again later or change the download source in the settings.</string>
+    <string name="dl_err_rate_limited">The download server is receiving too many requests (HTTP 429). Wait a few minutes and try again.</string>
+    <string name="dl_err_server">The download server has a problem right now (HTTP %1$d). Try again later.</string>
+    <string name="dl_err_http_other">The download server answered with an unexpected status (HTTP %1$d). Try again later.</string>
+    <string name="dl_err_verification">A downloaded file failed the integrity check (SHA-1) several times, so it was not used. Try again. If it keeps failing, change the download source in the settings.</string>
+    <string name="dl_err_no_space">There is not enough free storage space. Free some space and try again.</string>
+    <string name="dl_err_storage">The launcher cannot write to its game folder. Check the storage permission and make sure the storage is not full or read-only.</string>
+    <string name="dl_err_java_runtime">The Java runtime needed for this version was not found or could not be prepared.</string>
+    <string name="dl_err_unsupported_version">The selected version is not supported, or its version file is missing. Pick another version, or install it again while you are online.</string>
+    <string name="dl_err_generic">Minecraft could not be downloaded or prepared. Try again. If the problem continues, share the technical details (Show more).</string>
+    <string name="dl_err_details">Details: %1$s</string>
+    <string name="microsoft_session_invalid">Your Microsoft session is no longer valid. Please log in again.</string>
+    <string name="microsoft_no_internet">Microsoft, Xbox or Minecraft services cannot be reached. Check your internet connection and try again.</string>
+    <string name="microsoft_server_error">The Microsoft or Minecraft service returned an error (HTTP %1$d). Try again later.</string>
+    <string name="microsoft_session_refreshing">Your Microsoft session had expired and is being renewed. Press Play again when it is done.</string>
 </resources>

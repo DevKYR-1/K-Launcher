@@ -101,7 +101,8 @@ import java.util.Map;
 public final class Tools {
     public  static final float BYTE_TO_MB = 1024 * 1024;
     public static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
-    public static String APP_NAME = "PojavLauncher";
+    // A constant, so that code which only needs the name (DownloadUtils) does not have to load the whole class
+    public static final String APP_NAME = "PojavLauncher";
 
     public static final Gson GLOBAL_GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -1017,9 +1018,10 @@ public final class Tools {
         }
     }
 
+    /** Download a file without trying again if it fails: the only user is the cosmetic skin head of an account */
     public static void downloadFile(String urlInput, String nameOutput) throws IOException {
         File file = new File(nameOutput);
-        DownloadUtils.downloadFile(urlInput, file);
+        DownloadUtils.downloadFileOnce(urlInput, file);
     }
 
     public static boolean isAndroid8OrHigher() {
@@ -1046,21 +1048,16 @@ public final class Tools {
     }
 
 
+    /**
+     * Check a file against a SHA-1.
+     * @param f the file
+     * @param sourceSHA the expected SHA-1. If it is null, there is nothing to compare with and the file is accepted.
+     * @return true if the file has the expected SHA-1. A file that cannot be read is NOT a match,
+     *         so that it gets downloaded again instead of being trusted.
+     */
     public static boolean compareSHA1(File f, String sourceSHA) {
-        try {
-            String sha1_dst;
-            try (InputStream is = new FileInputStream(f)) {
-                sha1_dst = new String(Hex.encodeHex(org.apache.commons.codec.digest.DigestUtils.sha1(is)));
-            }
-            if(sourceSHA != null) {
-                return sha1_dst.equalsIgnoreCase(sourceSHA);
-            } else{
-                return true; // fake match
-            }
-        }catch (IOException e) {
-            Log.i("SHA1","Fake-matching a hash due to a read error",e);
-            return true;
-        }
+        if(sourceSHA == null) return true; // nothing to compare with
+        return DownloadUtils.sha1Matches(f, sourceSHA);
     }
 
     public static void ignoreNotch(boolean shouldIgnore, Activity ctx){

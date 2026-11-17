@@ -333,4 +333,27 @@
     <string name="controller_button_start">Başla</string>
     <string name="controller_button_select">Seç</string>
     <string name="customctrl_visibility_title">Görünürlük</string>
+
+    <!-- K-Projects: anlaşılır indirme ve giriş hataları (yığın izi yerine gösterilir) -->
+    <string name="dl_err_local_title">Microsoft hesabı gerekli</string>
+    <string name="dl_err_local_account">Bu Minecraft sürümü bu cihazda tam olarak kurulu değil (%1$d dosya eksik veya bozuk). Local hesap yalnızca zaten kurulu sürümleri başlatabilir, oyun dosyası indiremez.\n\nSürümü indirmek için Minecraft: Java Edition\'a sahip bir Microsoft hesabıyla giriş yapıp bir kez Oyna\'ya bas. Sonrasında Local hesabınla çevrimdışı başlatabilirsin.\n\nOyuna sahip olmayan bir Microsoft hesabı yalnızca Demo modunu kullanabilir.</string>
+    <string name="dl_err_local_login">Microsoft ile giriş</string>
+    <string name="dl_err_local_short">Local hesap oyun dosyası indiremez. Bu sürümü indirmek için Minecraft\'a sahip bir Microsoft hesabıyla giriş yap.</string>
+    <string name="dl_err_no_internet">İndirme sunucusuna ulaşılamıyor. İnternet bağlantını kontrol edip tekrar dene.</string>
+    <string name="dl_err_file_unavailable">Bir oyun dosyası indirme sunucusunda bulunamadı (HTTP 404). Daha sonra tekrar dene veya ayarlardan indirme kaynağını değiştir.</string>
+    <string name="dl_err_access_denied">İndirme sunucusu isteği reddetti (erişim engellendi). Daha sonra tekrar dene veya ayarlardan indirme kaynağını değiştir.</string>
+    <string name="dl_err_rate_limited">İndirme sunucusu çok fazla istek alıyor (HTTP 429). Birkaç dakika bekleyip tekrar dene.</string>
+    <string name="dl_err_server">İndirme sunucusunda şu anda bir sorun var (HTTP %1$d). Daha sonra tekrar dene.</string>
+    <string name="dl_err_http_other">İndirme sunucusu beklenmeyen bir yanıt verdi (HTTP %1$d). Daha sonra tekrar dene.</string>
+    <string name="dl_err_verification">İndirilen bir dosya birkaç denemede de bütünlük (SHA-1) doğrulamasından geçemedi, bu yüzden kullanılmadı. Tekrar dene. Sorun sürerse ayarlardan indirme kaynağını değiştir.</string>
+    <string name="dl_err_no_space">Yeterli boş depolama alanı yok. Biraz yer açıp tekrar dene.</string>
+    <string name="dl_err_storage">Başlatıcı oyun klasörüne yazamıyor. Depolama iznini kontrol et ve depolamanın dolu ya da salt okunur olmadığından emin ol.</string>
+    <string name="dl_err_java_runtime">Bu sürüm için gereken Java çalışma ortamı bulunamadı veya hazırlanamadı.</string>
+    <string name="dl_err_unsupported_version">Seçilen sürüm desteklenmiyor veya sürüm dosyası eksik. Başka bir sürüm seç ya da internete bağlıyken yeniden kur.</string>
+    <string name="dl_err_generic">Minecraft indirilemedi veya hazırlanamadı. Tekrar dene. Sorun sürerse teknik ayrıntıları (Daha fazla göster) paylaş.</string>
+    <string name="dl_err_details">Ayrıntı: %1$s</string>
+    <string name="microsoft_session_invalid">Microsoft oturumun artık geçerli değil. Lütfen tekrar giriş yap.</string>
+    <string name="microsoft_no_internet">Microsoft, Xbox veya Minecraft hizmetlerine ulaşılamıyor. İnternet bağlantını kontrol edip tekrar dene.</string>
+    <string name="microsoft_server_error">Microsoft veya Minecraft hizmeti hata döndürdü (HTTP %1$d). Daha sonra tekrar dene.</string>
+    <string name="microsoft_session_refreshing">Microsoft oturumunun süresi dolmuştu, yenileniyor. İşlem bitince tekrar Oyna\'ya bas.</string>
 </resources>

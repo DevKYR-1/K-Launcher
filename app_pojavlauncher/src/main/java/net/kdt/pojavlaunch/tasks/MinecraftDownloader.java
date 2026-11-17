@@ -21,18 +21,24 @@ import net.kdt.pojavlaunch.mirrors.MirrorTamperedException;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.utils.DownloadUtils;
 import net.kdt.pojavlaunch.utils.FileUtils;
+import net.kdt.pojavlaunch.utils.HttpStatusException;
+import net.kdt.pojavlaunch.utils.LauncherLog;
 import net.kdt.pojavlaunch.value.DependentLibrary;
 import net.kdt.pojavlaunch.value.MinecraftClientInfo;
 import net.kdt.pojavlaunch.value.MinecraftLibraryArtifact;
 
+import com.google.gson.JsonParseException;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,6 +48,7 @@ public class MinecraftDownloader {
     private static final String MAVEN_CENTRAL_REPO1 = "https://repo1.maven.org/maven2/";
     private AtomicReference<Exception> mDownloaderThreadException;
     private ArrayList<DownloaderTask> mScheduledDownloadTasks;
+    private HashSet<String> mScheduledTargets; // Paths of the files that already have a task, to never download one file twice
     private ArrayList<File> mDeclaredNatives;
     private AtomicLong mProcessedFileCounter;
     private AtomicLong mProcessedSizeCounter; // Total bytes of processed files (passed SHA1 or downloaded)
@@ -54,10 +61,22 @@ public class MinecraftDownloader {
 
     private static final ThreadLocal<byte[]> sThreadLocalDownloadBuffer = new ThreadLocal<>();
 
+    // Two game downloads at the same time would write the same files. Only one is allowed to run.
+    private static final AtomicBoolean sDownloadRunning = new AtomicBoolean(false);
+
     private boolean isLocalProfile = false;
+
+    /** @return true while a game download is running */
+    public static boolean isRunning() {
+        return sDownloadRunning.get();
+    }
 
     /**
      * Start the game version download process on the global executor service.
+     * <p>
+     * This is the "check and download the files" part of pressing PLAY: the account type decides what is
+     * allowed, then the files of the version are checked, the missing or damaged ones are downloaded
+     * (Microsoft accounts only) and verified, and only after that the listener is told that the game can start.
      * @param activity Activity, used for automatic installation of JRE 17 if needed
      * @param version The JMinecraftVersionList.Version from the version list, if available
      * @param realVersion The version ID (necessary)
@@ -66,23 +85,45 @@ public class MinecraftDownloader {
     public void start(@Nullable Activity activity, @Nullable JMinecraftVersionList.Version version,
                       @NonNull String realVersion, // this was there for a reason
                       @NonNull AsyncMinecraftDownloader.DoneListener listener) {
-        if(activity != null){
-            isLocalProfile = Tools.isLocalProfile(activity);
-            Tools.switchDemo(Tools.isDemoProfile(activity));
-        } else {
-            isLocalProfile = true;
-            Tools.switchDemo(true);
+        if(!sDownloadRunning.compareAndSet(false, true)) {
+            listener.onDownloadFailed(new DownloadPreconditionException(
+                    DownloadPreconditionException.Reason.BUSY, "Another game download is already in progress"));
+            return;
         }
-
-        sExecutorService.execute(() -> {
-            try {
-                downloadGame(activity, version, realVersion);
-                listener.onDownloadDone();
-            }catch (Exception e) {
-                listener.onDownloadFailed(e);
+        try {
+            if(activity != null){
+                isLocalProfile = Tools.isLocalProfile(activity);
+                Tools.switchDemo(Tools.isDemoProfile(activity));
+            } else {
+                isLocalProfile = true;
+                Tools.switchDemo(true);
             }
-            ProgressLayout.clearProgress(ProgressLayout.DOWNLOAD_MINECRAFT);
-        });
+
+            sExecutorService.execute(() -> {
+                try {
+                    LauncherLog.info("Download", "Checking the files of " + realVersion
+                            + " (account type: " + (isLocalProfile ? "local" : "microsoft") + ")");
+                    downloadGame(activity, version, realVersion);
+                    LauncherLog.info("Download", "All files of " + realVersion + " are ready");
+                    listener.onDownloadDone();
+                }catch (InterruptedException e) {
+                    // Cancelled: nothing failed, so there is nothing to tell the user, but the game does not start
+                    Thread.currentThread().interrupt();
+                    LauncherLog.info("Download", "Preparing " + realVersion + " was cancelled");
+                }catch (Exception e) {
+                    // The user gets a short message. The technical details go to the launcher log.
+                    LauncherLog.error("Download", "Preparing " + realVersion + " failed", e);
+                    listener.onDownloadFailed(e);
+                } finally {
+                    ProgressLayout.clearProgress(ProgressLayout.DOWNLOAD_MINECRAFT);
+                    sDownloadRunning.set(false);
+                }
+            });
+        }catch (RuntimeException e) {
+            // The task was not even started, so nothing will release the lock
+            sDownloadRunning.set(false);
+            throw e;
+        }
     }
 
     /**
@@ -100,6 +141,7 @@ public class MinecraftDownloader {
 
         mTargetJarFile = createGameJarPath(versionName);
         mScheduledDownloadTasks = new ArrayList<>();
+        mScheduledTargets = new HashSet<>();
         mDeclaredNatives = new ArrayList<>();
         mProcessedFileCounter = new AtomicLong(0);
         mProcessedSizeCounter = new AtomicLong(0);
@@ -107,12 +149,20 @@ public class MinecraftDownloader {
         mDownloaderThreadException = new AtomicReference<>(null);
         mUseFileCounter = false;
 
+        // Steps 1-3 of PLAY (account type, profile, version): read the version and plan the files it needs
         if(!downloadAndProcessMetadata(activity, verInfo, versionName)) {
-            throw new RuntimeException(activity.getString(R.string.exception_failed_to_unpack_jre17));
+            // Step 8: there is no Java runtime that can run this version
+            throw new DownloadPreconditionException(DownloadPreconditionException.Reason.JAVA_RUNTIME,
+                    activity.getString(R.string.exception_failed_to_unpack_jre17));
         }
 
+        // Step 4: find out what is missing. A Local account must not download anything, so it is told
+        // now, before any work is done, instead of failing at the first missing file.
+        if(isLocalProfile) ensureLocalProfileHasAllFiles();
+
+        // Steps 5-7: download what is missing, verify everything with SHA-1, prepare the libraries
         ArrayBlockingQueue<Runnable> taskQueue =
-                new ArrayBlockingQueue<>(mScheduledDownloadTasks.size(), false);
+                new ArrayBlockingQueue<>(Math.max(1, mScheduledDownloadTasks.size()), false);
         ThreadPoolExecutor downloaderPool =
                 new ThreadPoolExecutor(4, 4, 500, TimeUnit.MILLISECONDS, taskQueue);
 
@@ -130,6 +180,9 @@ public class MinecraftDownloader {
             }
             Exception thrownException = mDownloaderThreadException.get();
             if(thrownException != null) {
+                // The game must not start, and the files that are still waiting must not keep downloading
+                // (or being checked) in the background after the user has been told that it failed.
+                downloaderPool.shutdownNow();
                 throw thrownException;
             } else {
                 ensureJarFileCopy();
@@ -137,15 +190,41 @@ public class MinecraftDownloader {
             }
         }catch (InterruptedException e) {
             // Interrupted while waiting, which means that the download was cancelled.
-            // Kill all downloading threads immediately, and ignore any exceptions thrown by them
+            // Kill all downloading threads immediately, and ignore any exceptions thrown by them.
+            // The game must not start with half of its files, so the cancellation is passed on
+            // instead of being reported as a finished download.
             downloaderPool.shutdownNow();
+            throw e;
         }
+    }
+
+    /**
+     * A Local account is only allowed to start a version that is completely installed: it never downloads
+     * game files. See {@link LocalAccountDownloadException}.
+     * @throws LocalAccountDownloadException if anything that the version needs is missing
+     */
+    private void ensureLocalProfileHasAllFiles() throws LocalAccountDownloadException {
+        long missingFiles = 0;
+        String firstMissing = null;
+        for(DownloaderTask task : mScheduledDownloadTasks) {
+            // Optional files are skipped when they are not there
+            if(task.mSkipIfFailed || task.mTargetPath.exists()) continue;
+            missingFiles++;
+            if(firstMissing == null) firstMissing = task.mTargetPath.getName();
+        }
+        // The natives archives are optional downloads, but the game cannot be prepared without them
+        for(File nativesArchive : mDeclaredNatives) {
+            if(nativesArchive.exists()) continue;
+            missingFiles++;
+            if(firstMissing == null) firstMissing = nativesArchive.getName();
+        }
+        if(missingFiles > 0) throw new LocalAccountDownloadException(missingFiles, firstMissing, false);
     }
 
     private void reportProgressFileCounter(double speed) {
         long dlFileCounter = mProcessedFileCounter.get();
-        int progress = (int)((dlFileCounter * 100L) / mTotalFileCount);
-        ProgressLayout.setProgress(ProgressLayout.DOWNLOAD_MINECRAFT, progress,
+        int progress = mTotalFileCount > 0 ? (int)((dlFileCounter * 100L) / mTotalFileCount) : 0;
+        ProgressLayout.setProgress(ProgressLayout.DOWNLOAD_MINECRAFT, clampPercent(progress),
                 R.string.newdl_downloading_game_files, dlFileCounter,
                 mTotalFileCount, speed);
     }
@@ -154,9 +233,13 @@ public class MinecraftDownloader {
         long dlFileSize = mProcessedSizeCounter.get();
         double dlSizeMegabytes = (double) dlFileSize / ONE_MEGABYTE;
         double dlTotalMegabytes = (double) mTotalSize / ONE_MEGABYTE;
-        int progress = (int)((dlFileSize * 100L) / mTotalSize);
-        ProgressLayout.setProgress(ProgressLayout.DOWNLOAD_MINECRAFT, progress,
+        int progress = mTotalSize > 0 ? (int)((dlFileSize * 100L) / mTotalSize) : 0;
+        ProgressLayout.setProgress(ProgressLayout.DOWNLOAD_MINECRAFT, clampPercent(progress),
                 R.string.newdl_downloading_game_files_size, dlSizeMegabytes, dlTotalMegabytes, speed);
+    }
+
+    private static int clampPercent(int progress) {
+        return Math.max(0, Math.min(100, progress));
     }
 
     private File createGameJsonPath(String versionId) {
@@ -253,9 +336,19 @@ public class MinecraftDownloader {
         if(verInfo != null) versionJsonFile = downloadGameJson(verInfo);
         else versionJsonFile = createGameJsonPath(versionName);
         if(versionJsonFile.canRead())  {
-            verInfo = Tools.GLOBAL_GSON.fromJson(Tools.read(versionJsonFile), JMinecraftVersionList.Version.class);
+            try {
+                verInfo = Tools.GLOBAL_GSON.fromJson(Tools.read(versionJsonFile), JMinecraftVersionList.Version.class);
+            }catch (JsonParseException e) {
+                throw new DownloadPreconditionException(DownloadPreconditionException.Reason.UNSUPPORTED_VERSION,
+                        "The version file of " + versionName + " is damaged", e);
+            }
+            if(verInfo == null) {
+                throw new DownloadPreconditionException(DownloadPreconditionException.Reason.UNSUPPORTED_VERSION,
+                        "The version file of " + versionName + " is empty");
+            }
         } else {
-            throw new IOException("Unable to read Version JSON for version " + versionName);
+            throw new DownloadPreconditionException(DownloadPreconditionException.Reason.UNSUPPORTED_VERSION,
+                    "Unable to read Version JSON for version " + versionName);
         }
 
         if(activity != null && !NewJREUtil.installNewJreIfNeeded(activity, verInfo)){
@@ -287,11 +380,22 @@ public class MinecraftDownloader {
 
     private void scheduleDownload(File targetFile, int downloadClass, String url, String sha1,
                                   long size, boolean skipIfFailed) throws IOException {
+        // Several entries can point to the same file (identical assets, a library that two versions of
+        // an inheritance chain both need). Two threads must never write one file at the same time.
+        if(!mScheduledTargets.add(targetFile.getAbsolutePath())) return;
         FileUtils.ensureParentDirectory(targetFile);
         mTotalFileCount++;
         // Only attempt to check size if we still use the size counter and didn't switch to file counter.
-        if(size <= 0 && !mUseFileCounter) {
-            size = DownloadMirror.getContentLengthMirrored(downloadClass, url);
+        // A Local account never downloads, so it has no use for the size.
+        if(size <= 0 && !mUseFileCounter && !isLocalProfile) {
+            try {
+                size = DownloadMirror.getContentLengthMirrored(downloadClass, url);
+            }catch (IOException e) {
+                // Not knowing the size is not a reason to stop. If the server really cannot be reached, the
+                // download of the file reports it with a proper message.
+                Log.w("MinecraftDownloader", "Unable to ask for the size of " + targetFile.getName(), e);
+                size = -1;
+            }
         }
         if(size < 0) {
             // If we were unable to get the content length ourselves, we automatically fall back
@@ -486,7 +590,9 @@ public class MinecraftDownloader {
             try {
                 runCatching();
             }catch (Exception e) {
-                mDownloaderThreadException.set(e);
+                // Keep the first failure: it is the cause, the ones that follow are often only
+                // its consequence (like tasks being interrupted after the pool was stopped)
+                mDownloaderThreadException.compareAndSet(null, e);
             }
         }
 
@@ -517,7 +623,14 @@ public class MinecraftDownloader {
         
         private void downloadFile() throws Exception {
             if(isLocalProfile){
-                throw new RuntimeException("Download failed. Please make sure you are logged in with a Microsoft Account.");
+                // The licence check stays in place: a Local account never downloads game files.
+                // It must not pretend to own the game, it can only use what is already installed.
+                if(mSkipIfFailed) {
+                    // An optional file that is not there is skipped, like when its download fails
+                    finishWithoutDownloading();
+                    return;
+                }
+                throw new LocalAccountDownloadException(1, mTargetPath.getName(), mTargetPath.exists());
             }
 
             try {
@@ -527,9 +640,19 @@ public class MinecraftDownloader {
                     return null;
                 });
             }catch (Exception e) {
-                if(!mSkipIfFailed) throw e;
+                // An optional file may simply not exist on the server. Nothing else is a reason to go on
+                // without it: with no internet, a server error or a damaged download the game would
+                // start with missing files, so these failures are reported.
+                if(!mSkipIfFailed || !isMissingOnServer(e)) throw e;
+                Log.i("MinecraftDownloader", "Skipped the optional file " + mTargetPath.getName()
+                        + ", it is not available on the server");
             }
             mProcessedFileCounter.incrementAndGet();
+        }
+
+        private boolean isMissingOnServer(Exception e) {
+            int status = HttpStatusException.statusOf(e);
+            return status == 404 || status == 410;
         }
 
         private void finishWithoutDownloading() {
@@ -540,9 +663,12 @@ public class MinecraftDownloader {
         @Override
         public void updateProgress(int curr, int max) {
             int delta = curr - mLastCurr;
-            mProcessedSizeCounter.addAndGet(delta);
-            mInternetUsageCounter.addAndGet(delta);
             mLastCurr = curr;
+            // A new try after a failure starts counting from zero again, then the progress of this
+            // file goes back with it and the bar never shows data that is not there.
+            mProcessedSizeCounter.addAndGet(delta);
+            // The traffic (for the speed) only counts what was really transferred
+            if(delta > 0) mInternetUsageCounter.addAndGet(delta);
         }
     }
 }

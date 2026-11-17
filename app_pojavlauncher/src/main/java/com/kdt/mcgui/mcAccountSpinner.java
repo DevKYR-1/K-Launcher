@@ -62,6 +62,11 @@ public class mcAccountSpinner extends AppCompatSpinner implements AdapterView.On
     private final List<String> mAccountList = new ArrayList<>(2);
     private MinecraftAccount mSelectecAccount = null;
 
+    /* Set when the last try to renew the Microsoft session failed (no internet, session revoked...).
+     * The user was told why, and starting the game must not wait for a renewal that cannot succeed:
+     * a game that is already installed can still be played offline. */
+    private boolean mSessionRenewalFailed = false;
+
     /* Display the head of the current profile, here just to allow bitmap recycling */
     private BitmapDrawable mHeadDrawable;
 
@@ -91,11 +96,19 @@ public class mcAccountSpinner extends AppCompatSpinner implements AdapterView.On
 
     private final DoneListener mDoneListener = account -> {
         Toast.makeText(getContext(), R.string.main_login_done, Toast.LENGTH_SHORT).show();
+        mSessionRenewalFailed = false;
 
         // Check if the account being added is not one that is already existing
         // Like login twice on the same mc account...
         for(String mcAccountName : mAccountList){
-            if(mcAccountName.equals(account.username)) return;
+            if(mcAccountName.equals(account.username)) {
+                // The session of an existing account was renewed. The selected account has to carry the
+                // new token and expiry time, or it would keep looking expired until the launcher is restarted.
+                if(mSelectecAccount != null && mcAccountName.equals(mSelectecAccount.username)) {
+                    mSelectecAccount = account;
+                }
+                return;
+            }
         }
 
         mSelectecAccount = account;
@@ -105,6 +118,7 @@ public class mcAccountSpinner extends AppCompatSpinner implements AdapterView.On
     };
 
     private final ErrorListener mErrorListener = errorMessage -> {
+        mSessionRenewalFailed = true;
         mLoginBarPaint.setColor(Color.RED);
         Context context = getContext();
         if(errorMessage instanceof PresentedException) {
@@ -276,17 +290,30 @@ public class mcAccountSpinner extends AppCompatSpinner implements AdapterView.On
     }
 
     private void performLogin(MinecraftAccount minecraftAccount){
+        // A Local account is offline: there is no Microsoft session to renew for it
         if(minecraftAccount.isLocal()) return;
 
         mLoginBarPaint.setColor(getResources().getColor(R.color.minebutton_color));
-        if(minecraftAccount.isMicrosoft){
-            if(System.currentTimeMillis() > minecraftAccount.expiresAt){
-                // Perform login only if needed
-                new MicrosoftBackgroundLogin(true, minecraftAccount.msaRefreshToken)
-                        .performLogin(mProgressListener, mDoneListener, mErrorListener);
-            }
-            return;
+        if(minecraftAccount.isSessionExpired(System.currentTimeMillis())){
+            // Perform login only if needed
+            new MicrosoftBackgroundLogin(true, minecraftAccount.msaRefreshToken)
+                    .performLogin(mProgressListener, mDoneListener, mErrorListener);
         }
+    }
+
+    /**
+     * To be called when the user wants to start the game. If the Microsoft session of the selected account
+     * has expired, the renewal starts now, instead of the game starting with a token that does not work anymore.
+     * @return true if a renewal was started. The game must wait for it, the progress bar shows it. False if there
+     *         is nothing to renew (a Local account, a valid session), or if renewing failed already: the user
+     *         got the reason, and an installed game can still be played offline.
+     */
+    public boolean renewExpiredSession() {
+        MinecraftAccount account = mSelectecAccount;
+        if(account == null || mSessionRenewalFailed) return false;
+        if(!account.isSessionExpired(System.currentTimeMillis())) return false;
+        performLogin(account);
+        return true;
     }
 
     /** Pick the selected account, the one in settings if 0 is passed */
@@ -316,6 +343,7 @@ public class mcAccountSpinner extends AppCompatSpinner implements AdapterView.On
         }
 
         mSelectecAccount = selectedAccount;
+        mSessionRenewalFailed = false;
         setImageFromSelectedAccount();
     }
 

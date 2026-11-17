@@ -3,13 +3,15 @@
 <h1 align="center">K-Projects</h1>
 
 **K-Projects is a re-skinned build of [PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher)**, which is based on [Boardwalk](https://github.com/zhuowei/Boardwalk).
-Only the interface was changed: neon theme, button graphics, icons, app name and an animated logo. No launcher, login or game code was touched.
+The interface is new: neon theme, button graphics, icons, app name and an animated logo. The game download and the account/login code were also repaired (clear error messages, retries, SHA-1 checks, a log file, Microsoft session handling); the code that starts the game (Java runtime, renderers, controls) was not touched.
 See [NOTICE-K-Projects.md](./NOTICE-K-Projects.md) for the list of changes and what the LGPLv3 asks of you.
+
+**Accounts:** a *Local* account is offline. By the launcher's own rule it cannot download game files and it does not pretend to own the game: it can start versions that are already installed, and it cannot join online-mode servers. To install a version, sign in once with a Microsoft account that owns Minecraft: Java Edition and press *Play*; afterwards the Local account can start it offline. (A Microsoft account without the game can use the Demo mode only.)
 K-Projects is not affiliated with Mojang, Microsoft or the PojavLauncher team.
 
 **Heads-up:** upstream PojavLauncher is discontinued (see the original notice below), so this build gets no upstream fixes and Minecraft versions newer than 1.21 may not run.
 
-**Build:** follow *Building* below (`./gradlew :app_pojavlauncher:assembleDebug`), or run the *Android CI* workflow in your fork's *Actions* tab and download the `app-debug` artifact. Both routes download the JRE and LTW from the PojavLauncher team's repositories.
+**Build:** follow *Building* below (`./gradlew :app_pojavlauncher:assembleDebug`), or let GitHub build it: the *Android CI* workflow (your fork's *Actions* tab) attaches `K-Projects-debug.apk` to the *Releases* page ("K-Projects debug build (latest)") and also uploads it as the `app-debug` artifact. The workflow takes the Java 8/17/21 runtimes from the last official PojavLauncher release APK ("gladiolus"), because the old JRE CI artifacts have expired, and LTW from the PojavLauncher team's repository.
 
 ---
 

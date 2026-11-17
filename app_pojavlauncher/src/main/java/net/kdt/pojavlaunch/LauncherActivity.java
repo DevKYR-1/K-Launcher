@@ -104,7 +104,8 @@ public class LauncherActivity extends BaseActivity {
     };
 
     private final ExtraListener<Boolean> mLaunchGameListener = (key, value) -> {
-        if(mProgressLayout.hasProcesses()){
+        // A second press of the button must not start a second download on top of the first one
+        if(mProgressLayout.hasProcesses() || MinecraftDownloader.isRunning()){
             Toast.makeText(this, R.string.tasks_ongoing, Toast.LENGTH_LONG).show();
             return false;
         }
@@ -123,6 +124,11 @@ public class LauncherActivity extends BaseActivity {
         if(mAccountSpinner.getSelectedAccount() == null){
             Toast.makeText(this, R.string.no_saved_accounts, Toast.LENGTH_LONG).show();
             ExtraCore.setValue(ExtraConstants.SELECT_AUTH_METHOD, true);
+            return false;
+        }
+        // A Microsoft session that has expired is renewed first. A Local account has no session to renew.
+        if(mAccountSpinner.renewExpiredSession()) {
+            Toast.makeText(this, R.string.microsoft_session_refreshing, Toast.LENGTH_LONG).show();
             return false;
         }
         String normalizedVersionId = AsyncMinecraftDownloader.normalizeVersionId(prof.lastVersionId);

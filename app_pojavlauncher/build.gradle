@@ -189,6 +189,13 @@ android {
         buildConfig true
     }
 
+    testOptions {
+        unitTests {
+            // Unit tests run on the JVM against a stubbed android.jar: calls like Log.w() must do nothing there
+            returnDefaultValues = true
+        }
+    }
+
     buildToolsVersion = '34.0.0'
 }
 
@@ -228,4 +235,7 @@ dependencies {
     // implementation 'net.sourceforge.streamsupport:streamsupport-cfuture:1.7.0'
 
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+
+    // Tests of the download engine, the account/session logic and the error messages (src/test)
+    testImplementation 'junit:junit:4.13.2'
 }
