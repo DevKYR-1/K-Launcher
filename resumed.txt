@@ -1,0 +1,1 @@
+    topResumedActivity=ActivityRecord{6bb650f u0 net.kdt.pojavlaunch.debug/net.kdt.pojavlaunch.LauncherActivity t8}
