@@ -121,7 +121,9 @@ jobs:
         if: github.ref == 'refs/heads/k-projects-ui'
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
+          set -uo pipefail
           tag=k-projects-latest
           cp out/app-debug.apk out/K-Projects-debug.apk
           cat > "$RUNNER_TEMP/notes.md" <<'EOF'
@@ -137,9 +139,33 @@ jobs:
 
           Turkce: `K-Projects-debug.apk` dosyasini indirip kur (telefon "bilinmeyen kaynaklardan yukleme" izni isteyebilir).
           EOF
-          gh release delete "$tag" --yes --cleanup-tag || true
-          gh release create "$tag" out/K-Projects-debug.apk \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --title "K-Projects debug build (latest)" \
-            --notes-file "$RUNNER_TEMP/notes.md"
+          printf '\nBuilt from commit %s (%s UTC).\n' "${GITHUB_SHA:0:7}" "$(date -u '+%Y-%m-%d %H:%M')" >> "$RUNNER_TEMP/notes.md"
+
+          # The old release is never deleted before the new APK is in place. An earlier version of this step deleted
+          # the release first, and when GitHub then refused to create the new one (HTTP 403) the download page was empty.
+          publish() {
+            if gh release view "$tag" -R "$REPO" > /dev/null 2>&1; then
+              echo "release $tag exists: replacing the APK"
+              gh release upload "$tag" out/K-Projects-debug.apk -R "$REPO" --clobber || return 1
+              gh release edit "$tag" -R "$REPO" --prerelease \
+                --title "K-Projects debug build (latest)" \
+                --notes-file "$RUNNER_TEMP/notes.md" || return 1
+              # Bring the tag to the built commit. The APK is already replaced, so this part may fail without a failed build.
+              gh api -X PATCH "repos/$REPO/git/refs/tags/$tag" -f sha="$GITHUB_SHA" -F force=true > /dev/null \
+                || echo "::warning::the APK was replaced, but the tag $tag could not be moved to $GITHUB_SHA"
+            else
+              echo "no release $tag yet: creating it"
+              gh release create "$tag" out/K-Projects-debug.apk -R "$REPO" \
+                --target "$GITHUB_SHA" \
+                --prerelease \
+                --title "K-Projects debug build (latest)" \
+                --notes-file "$RUNNER_TEMP/notes.md" || return 1
+            fi
+          }
+          for attempt in 1 2 3; do
+            if publish; then exit 0; fi
+            echo "publishing failed (attempt $attempt of 3)"
+            sleep $((attempt * 15))
+          done
+          echo "::error::The release could not be published. The built APK is still in the 'app-debug' artifact of this run."
+          exit 1

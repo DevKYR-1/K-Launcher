@@ -1,0 +1,100 @@
+name: KP release probe
+
+# Temporary diagnostic. The Android CI could not create the release "k-projects-latest" (HTTP 403, "Resource not
+# accessible by integration") although its token has "Contents: write". This job tries a few release and tag creations
+# with the same kind of token on throw-away names and prints what GitHub answers. Everything it creates is deleted again.
+# It does not touch the app and not the real release.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ k-projects-ui ]
+    paths:
+      - '.github/workflows/kp-release-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 60
+
+      - name: Try release and tag creation with throw-away names
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -u
+          rid="$GITHUB_RUN_ID"
+          tags=""
+          releases=""
+
+          api() {
+            local method="$1" path="$2" data="${3:-}"
+            local args=(-sS -o "$RUNNER_TEMP/api.body" -D "$RUNNER_TEMP/api.hdr" -w '%{http_code}' -X "$method"
+                        -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"
+                        -H "X-GitHub-Api-Version: 2022-11-28")
+            if [ -n "$data" ]; then args+=(-d "$data"); fi
+            code="$(curl "${args[@]}" "https://api.github.com/repos/$REPO/$path")"
+            echo "$method $path -> HTTP $code"
+            grep -i -E '^(x-accepted-github-permissions|x-github-request-id):' "$RUNNER_TEMP/api.hdr" | tr -d '\r' | sed 's/^/    /'
+            head -c 400 "$RUNNER_TEMP/api.body" | sed 's/^/    /'
+            echo
+          }
+
+          cleanup() {
+            echo "::group::cleanup"
+            for id in $releases; do api DELETE "releases/$id"; done
+            for t in $tags; do api DELETE "git/refs/tags/$t"; done
+            echo "left over (must be empty):"
+            gh api "repos/$REPO/git/matching-refs/tags/kp-probe-" --jq '.[].ref' || true
+            gh api "repos/$REPO/releases?per_page=100" --jq '.[] | select(.name | startswith("kp-probe")) | .id' || true
+            echo "::endgroup::"
+          }
+          trap cleanup EXIT
+
+          # a commit that does not change any workflow file, and the commit of this run (it does change one)
+          plain=""
+          for c in $(git rev-list -n 60 HEAD); do
+            if ! git diff-tree --no-commit-id --name-only -r --root "$c" | grep -q '^\.github/workflows/'; then plain="$c"; break; fi
+          done
+          echo "this commit (changes workflow files): $GITHUB_SHA"
+          echo "a commit without workflow changes:    ${plain:-none found}"
+          echo "gh: $(gh --version | head -1)"
+          echo
+
+          echo "=== 0. does the real release exist? (read)"
+          api GET "releases/tags/k-projects-latest"
+
+          echo "=== A. draft release, no tag, no target"
+          api POST releases "{\"tag_name\":\"kp-probe-A-$rid\",\"name\":\"kp-probe A\",\"draft\":true}"
+          if [ "$code" = 201 ]; then releases="$releases $(jq -r .id "$RUNNER_TEMP/api.body")"; fi
+
+          echo "=== B. lightweight tag at THIS commit (git refs API)"
+          api POST git/refs "{\"ref\":\"refs/tags/kp-probe-B-$rid\",\"sha\":\"$GITHUB_SHA\"}"
+          if [ "$code" = 201 ]; then tags="$tags kp-probe-B-$rid"; fi
+
+          if [ -n "$plain" ]; then
+            echo "=== C. lightweight tag at a commit without workflow changes"
+            api POST git/refs "{\"ref\":\"refs/tags/kp-probe-C-$rid\",\"sha\":\"$plain\"}"
+            if [ "$code" = 201 ]; then tags="$tags kp-probe-C-$rid"; fi
+          fi
+
+          echo "=== D. pre-release with target = THIS commit (what the Android CI does)"
+          api POST releases "{\"tag_name\":\"kp-probe-D-$rid\",\"target_commitish\":\"$GITHUB_SHA\",\"name\":\"kp-probe D\",\"prerelease\":true}"
+          if [ "$code" = 201 ]; then releases="$releases $(jq -r .id "$RUNNER_TEMP/api.body")"; tags="$tags kp-probe-D-$rid"; fi
+
+          echo "=== E. pre-release with target = the branch name"
+          api POST releases "{\"tag_name\":\"kp-probe-E-$rid\",\"target_commitish\":\"k-projects-ui\",\"name\":\"kp-probe E\",\"prerelease\":true}"
+          if [ "$code" = 201 ]; then releases="$releases $(jq -r .id "$RUNNER_TEMP/api.body")"; tags="$tags kp-probe-E-$rid"; fi
+
+          if [ -n "$plain" ]; then
+            echo "=== F. pre-release with target = a commit without workflow changes"
+            api POST releases "{\"tag_name\":\"kp-probe-F-$rid\",\"target_commitish\":\"$plain\",\"name\":\"kp-probe F\",\"prerelease\":true}"
+            if [ "$code" = 201 ]; then releases="$releases $(jq -r .id "$RUNNER_TEMP/api.body")"; tags="$tags kp-probe-F-$rid"; fi
+          fi
