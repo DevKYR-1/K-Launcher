@@ -1,0 +1,16 @@
+/sdcard/Android/data/net.kdt.pojavlaunch.debug/files:
+total 56
+drwxrws--- 7 u0_a192 ext_data_rw 4096 2026-11-18 23:17 .
+drwxrws--- 3 u0_a192 ext_data_rw 4096 2026-11-18 23:17 ..
+drwxrws--- 2 u0_a192 ext_data_rw 4096 2026-11-18 23:17 .minecraft
+drwxrws--- 2 u0_a192 ext_data_rw 4096 2026-11-18 23:17 caciocavallo
+drwxrws--- 2 u0_a192 ext_data_rw 4096 2026-11-18 23:17 caciocavallo17
+drwxrws--- 2 u0_a192 ext_data_rw 4096 2026-11-18 23:17 controlmap
+drwxrws--- 2 u0_a192 ext_data_rw 4096 2026-11-18 23:17 lwjgl3
+
+/sdcard/Android/data/net.kdt.pojavlaunch.debug/files/.minecraft:
+total 32
+drwxrws--- 2 u0_a192 ext_data_rw 4096 2026-11-18 23:17 .
+drwxrws--- 7 u0_a192 ext_data_rw 4096 2026-11-18 23:17 ..
+-rw-rw---- 1 u0_a192 ext_data_rw  225 2026-11-18 23:17 launcher_profiles.json
+-rw-rw---- 1 u0_a192 ext_data_rw 1883 2026-11-18 23:17 options.txt
