@@ -17,6 +17,8 @@ on:
     paths:
       - '.github/workflows/kp-play.yml'
       - '.github/kp/play.sh'
+      - '.github/kp/lib.sh'
+      - '.github/kp/fetch-apk.sh'
 
 jobs:
   play:
@@ -35,31 +37,8 @@ jobs:
       - name: Wait for the running build, then download the APK
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          repo="${{ github.repository }}"
-          # The Android CI of this very commit (if the commit changed app files) takes a few seconds to show up
-          sleep 45
-          unknown=0
-          for i in $(seq 1 90); do
-            running="$(gh run list -R "$repo" --workflow android.yml --branch k-projects-ui --limit 5 \
-                         --json status --jq '[.[] | select(.status != "completed")] | length' 2>/dev/null || echo unknown)"
-            echo "Android CI builds still running on k-projects-ui: $running (check $i)"
-            if [ "$running" = 0 ]; then break; fi
-            if [ "$running" = unknown ]; then
-              unknown=$((unknown + 1))
-              [ "$unknown" -ge 3 ] && break
-            fi
-            sleep 30
-          done
-          last="$(gh run list -R "$repo" --workflow android.yml --branch k-projects-ui --limit 1 \
-                    --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo unknown)"
-          echo "conclusion of the latest Android CI build: $last"
-          if [ "$last" != success ] && [ "$last" != unknown ]; then
-            echo "the latest build did not succeed, so there is no new APK to test"
-            exit 1
-          fi
-          curl -fL --retry 3 -o app.apk "https://github.com/$repo/releases/download/k-projects-latest/K-Projects-debug.apk"
-          ls -lh app.apk
+          KP_FIRST_WAIT: ${{ github.event_name == 'push' && '45' || '0' }}
+        run: bash .github/kp/fetch-apk.sh "${{ github.repository }}" app.apk
 
       - name: Enable KVM
         run: |

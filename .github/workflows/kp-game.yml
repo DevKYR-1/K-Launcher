@@ -1,0 +1,84 @@
+name: KP game test (emulator)
+
+# Starts a game process with a Local account in an Android emulator. A tiny stand-in "version" (.github/kp/stub, built in
+# this job, it is NOT Minecraft) is installed in the launcher folder; the job creates a Local account, presses PLAY and
+# checks that the Java runtime (8 / 17 / 21) starts, that the game process stays alive and that the launcher ends cleanly.
+# The last matrix entry runs the same test with the original PojavLauncher release as a control: if the original behaves
+# the same way, a problem comes from the test machine (an emulator) and not from K-Projects.
+# Output (screenshots, UI dumps, logs) is pushed to the "ci-game-<id>" branches. It does not change the app.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ k-projects-ui ]
+    paths:
+      - '.github/workflows/kp-game.yml'
+      - '.github/kp/game.sh'
+      - '.github/kp/lib.sh'
+      - '.github/kp/fetch-apk.sh'
+      - '.github/kp/stub/**'
+
+jobs:
+  game:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { id: k-projects-java8,  java: 8,  pkg: net.kdt.pojavlaunch.debug, apk: "" }
+          - { id: k-projects-java17, java: 17, pkg: net.kdt.pojavlaunch.debug, apk: "" }
+          - { id: k-projects-java21, java: 21, pkg: net.kdt.pojavlaunch.debug, apk: "" }
+          - { id: original-java8,    java: 8,  pkg: net.kdt.pojavlaunch,       apk: "https://github.com/PojavLauncherTeam/PojavLauncher/releases/download/gladiolus/PojavLauncher.apk" }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KP_FIRST_WAIT: ${{ github.event_name == 'push' && '45' || '0' }}
+        run: bash .github/kp/fetch-apk.sh "${{ github.repository }}" app.apk "${{ matrix.apk }}"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Start a game process (${{ matrix.id }}) in an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_5
+          cores: 4
+          ram-size: 6144M
+          disk-size: 8192M
+          emulator-boot-timeout: 900
+          script: bash .github/kp/game.sh app.apk game-out ${{ matrix.pkg }} ${{ matrix.java }}
+
+      - name: Publish output to a ci-game branch
+        if: always()
+        run: |
+          set -e
+          test -d game-out || { echo "no game-out folder"; exit 0; }
+          mkdir -p "$RUNNER_TEMP/out"
+          cp game-out/*.txt game-out/*.png game-out/*.xml game-out/*.json "$RUNNER_TEMP/out/" 2>/dev/null || true
+          cd "$RUNNER_TEMP/out"
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "ci-game-${{ matrix.id }}"
+          git add -A
+          git commit -q -m "Emulator game test output (${{ matrix.id }}) for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "ci-game-${{ matrix.id }}"
+
+      - name: Check the result
+        if: always()
+        run: |
+          cat game-out/summary.txt
+          grep -q ' result=ok ' game-out/summary.txt
