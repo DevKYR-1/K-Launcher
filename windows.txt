@@ -1,0 +1,14 @@
+  Window #0 Window{c8fafc u0 ScreenDecorOverlayBottom}:
+  Window #1 Window{6cc2221 u0 ScreenDecorOverlay}:
+  Window #2 Window{76528fa u0 SecondaryHomeHandle0}:
+  Window #3 Window{c1e7039 u0 EdgeBackGestureHandler0}:
+  Window #4 Window{1b82dd4 u0 NavigationBar0}:
+  Window #5 Window{56f9b66 u0 NotificationShade}:
+  Window #6 Window{75b7df9 u0 StatusBar}:
+  Window #7 Window{fe7261c u0 Application Not Responding: com.google.android.apps.nexuslauncher}:
+  Window #8 Window{5b9f670 u0 ShellDropTarget}:
+  Window #9 Window{cf95855 u0 InputMethod}:
+  Window #10 Window{4865e3 u0 net.kdt.pojavlaunch.debug/net.kdt.pojavlaunch.LauncherActivity}:
+  Window #11 Window{85d470f u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}:
+  Window #12 Window{5a631d4 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}:
+  Window #13 Window{445f811 u0 com.android.systemui.wallpapers.ImageWallpaper}:
