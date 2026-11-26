@@ -1,0 +1,1 @@
+java=21 pkg=net.kdt.pojavlaunch.debug result=ui_step_failed_account_spinner started_after=nones alive_for=0s stub=no finished=no gl=none crashed=no
