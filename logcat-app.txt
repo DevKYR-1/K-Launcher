@@ -1,0 +1,12 @@
+11-26 20:09:41.055  4138  4138 W Monkey  : args: [-p, net.kdt.pojavlaunch, -c, android.intent.category.LAUNCHER, 1]
+11-26 20:09:41.055  4138  4138 W Monkey  :  arg: "net.kdt.pojavlaunch"
+11-26 20:09:41.056  4138  4138 W Monkey  : data="net.kdt.pojavlaunch"
+11-26 20:09:41.161  1138  1138 D CarrierSvcBindHelper: onPackageAdded: net.kdt.pojavlaunch.debug
+11-26 20:09:41.176  1138  1405 D ImsResolver: maybeAddedImsService, packageName: net.kdt.pojavlaunch.debug
+11-26 20:09:41.908  1138  1138 D CarrierSvcBindHelper: onPackageModified: net.kdt.pojavlaunch.debug
+11-26 20:09:42.013  1138  1405 D ImsResolver: maybeAddedImsService, packageName: net.kdt.pojavlaunch.debug
+11-26 20:09:42.804  1759  1759 I AiAiEcho: AppFetcherImplV2 updateApps package:[net.kdt.pojavlaunch.debug], userId:[0], reason:[package is added.].
+11-26 20:09:43.967  1759  1759 I AiAiEcho: AppFetcherImpl onPackageChanged net.kdt.pojavlaunch.debug.
+11-26 20:09:44.089  1759  2538 I AiAiEcho: AppIndexer Package:[net.kdt.pojavlaunch.debug] UserProfile:[0] Enabled:[true].
+11-26 20:09:44.089  1759  2538 I AiAiEcho: AppFetcherImplV2 updateApps package:[net.kdt.pojavlaunch.debug], userId:[0], reason:[package is updated.].
+11-26 20:09:48.482  1568  4698 I BlockstoreStorage: Clearing Blockstore Data for package net.kdt.pojavlaunch.debug [CONTEXT service_id=258 ]
