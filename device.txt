@@ -1,0 +1,4 @@
+sdk=34
+abi=x86_64
+Physical size: 1080x2340
+Physical density: 440
