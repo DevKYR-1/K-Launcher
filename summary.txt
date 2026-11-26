@@ -1,0 +1,1 @@
+java=17 pkg=net.kdt.pojavlaunch.debug result=error_dialog started_after=nones alive_for=0s stub=no finished=no gl=none crashed=no
