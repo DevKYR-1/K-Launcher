@@ -1,0 +1,11 @@
+{
+  "analyticsFailcount": 0,
+  "profiles": {
+    "e85a3164-3dfc-4bae-983c-83723d9eea19": {
+      "lastVersionId": "1.7.10",
+      "logConfigIsXML": false,
+      "name": "(Default)"
+    }
+  },
+  "profilesWereMigrated": false
+}

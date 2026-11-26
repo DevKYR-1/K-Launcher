@@ -1,0 +1,1 @@
+version=1.18.2 result=ui_step_failed_account_spinner crashed=no logged=no ms_login=not_tested
