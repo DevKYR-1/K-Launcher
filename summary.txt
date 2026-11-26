@@ -1,0 +1,1 @@
+version=1.7.10 result=ok crashed=no logged=yes ms_login=button_missing

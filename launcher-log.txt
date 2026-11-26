@@ -1,0 +1,10 @@
+2026-11-26 20:12:06 [Download] Checking the files of 1.7.10 (account type: local)
+2026-11-26 20:12:08 [Download] Preparing 1.7.10 failed
+net.kdt.pojavlaunch.tasks.LocalAccountDownloadException: A Local account cannot download game files: 702 file(s) are missing or damaged (bdf48ef6b5d0d23bbb02e17d04865216179f510a is missing)
+	at net.kdt.pojavlaunch.tasks.MinecraftDownloader.ensureLocalProfileHasAllFiles(MinecraftDownloader.java:221)
+	at net.kdt.pojavlaunch.tasks.MinecraftDownloader.downloadGame(MinecraftDownloader.java:161)
+	at net.kdt.pojavlaunch.tasks.MinecraftDownloader.lambda$start$0$net-kdt-pojavlaunch-tasks-MinecraftDownloader(MinecraftDownloader.java:106)
+	at net.kdt.pojavlaunch.tasks.MinecraftDownloader$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:644)
+	at java.lang.Thread.run(Thread.java:1012)
