@@ -18,22 +18,6 @@ top_activity() {
     | sed -E 's/.* u0 //; s/ t[0-9]+\}.*//'
 }
 dump_views() { adb shell dumpsys activity top 2>/dev/null | tr -d '\r'; }
-# "l t r b" of the first non-empty view with the given resource id in the top activity
-find_bounds() {
-  dump_views | grep -E "app:id/$1( |\})" | grep -o -E '[0-9]+,[0-9]+-[0-9]+,[0-9]+' \
-    | grep -v '^0,0-0,0$' | head -1 | tr ',-' '  '
-}
-tap_id() {
-  local b l t r bt
-  b=$(find_bounds "$1")
-  if [ -z "$b" ]; then
-    log "view $1 not found"
-    return 1
-  fi
-  read -r l t r bt <<< "$b"
-  adb shell input tap $(( (l + r) / 2 )) $(( (t + bt) / 2 ))
-  log "tapped $1 at $(( (l + r) / 2 )),$(( (t + bt) / 2 ))"
-}
 
 # The text of everything on the screen (the system accessibility dump), needed for dialogs.
 # It can fail while the screen is busy, so callers just try again later.
@@ -68,6 +52,55 @@ for m in re.finditer(r"<node [^>]*>", xml):
 sys.exit(1)
 PY
 }
+# "x y" of the center of the visible view with the resource id $1 (for example account_spinner), from the last ui_dump.
+# These are screen coordinates. (The view dump of "dumpsys activity top" is no help here: its bounds are relative to the
+# parent view, and tapping them hit the status bar instead of the account spinner.)
+ui_center_of_id() {
+  python3 - "$OUT/ui.xml" "$1" <<'PY'
+import re, sys
+xml = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+want = ":id/" + sys.argv[2]
+for m in re.finditer(r"<node [^>]*>", xml):
+    node = m.group(0)
+    rid = re.search(r'resource-id="([^"]*)"', node)
+    if not rid or not rid.group(1).endswith(want):
+        continue
+    b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', node)
+    if not b:
+        continue
+    l, t, r, bt = map(int, b.groups())
+    if r <= l or bt <= t:
+        continue
+    print((l + r) // 2, (t + bt) // 2)
+    sys.exit(0)
+sys.exit(1)
+PY
+}
+# Tap the view with the resource id $1. The screen is dumped again every time, so the position is the current one.
+tap_id() {
+  local xy x y try
+  for try in 1 2 3; do
+    if ui_dump && xy="$(ui_center_of_id "$1")" && [ -n "$xy" ]; then
+      read -r x y <<< "$xy"
+      adb shell input tap "$x" "$y"
+      log "tapped $1 at $x,$y"
+      return 0
+    fi
+    sleep 2
+  done
+  log "view $1 not found"
+  return 1
+}
+# The soft keyboard covers the lower part of the screen. BACK closes it, but only if it is open: without a keyboard
+# BACK would leave the screen.
+hide_keyboard() {
+  if adb shell dumpsys input_method 2>/dev/null | grep -q 'mInputShown=true'; then
+    adb shell input keyevent 4
+    sleep 1
+    log "closed the soft keyboard"
+  fi
+}
+
 # "x y|message" of an open dialog of the app under test (its first button and its text), from the last ui_dump
 ui_app_dialog() {
   python3 - "$OUT/ui.xml" "$PKG" <<'PY'
@@ -142,7 +175,7 @@ must_tap() {
   dismiss_system_dialogs
   if ! tap_id "$1"; then
     shot "fail-$1"
-    dump_views | grep -o -E '[0-9]+,[0-9]+-[0-9]+,[0-9]+ #[0-9a-f]+ app:id/[A-Za-z0-9_]+' | sort -u > "$OUT/views-fail-$1.txt"
+    cp "$OUT/ui.xml" "$OUT/ui-fail-$1.xml" 2>/dev/null || true
     log "giving up: view $1 missing (top: $(top_activity))"
     finish "ui_step_failed_$1"
   fi
@@ -187,6 +220,7 @@ kp_local_account() {
   sleep 2
   adb shell input text KProjectsTest
   sleep 2
+  hide_keyboard
   shot 04-typed
   must_tap login_button
   sleep 6
