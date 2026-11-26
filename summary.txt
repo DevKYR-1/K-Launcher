@@ -1,0 +1,1 @@
+java=8 pkg=net.kdt.pojavlaunch.debug result=ok started_after=5s alive_for=61s stub=yes finished=yes gl=ok crashed=no

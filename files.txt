@@ -1,0 +1,24 @@
+/sdcard/Android/data/net.kdt.pojavlaunch.debug/files:
+total 84
+drwxrws--- 7 u0_a192 ext_data_rw  4096 2026-11-26 20:12 .
+drwxrws--- 3 u0_a192 ext_data_rw  4096 2026-11-26 20:10 ..
+drwxrws--- 4 u0_a192 ext_data_rw  4096 2026-11-26 20:12 .minecraft
+drwxrws--- 2 u0_a192 ext_data_rw  4096 2026-11-26 20:10 caciocavallo
+drwxrws--- 2 u0_a192 ext_data_rw  4096 2026-11-26 20:10 caciocavallo17
+drwxrws--- 2 u0_a192 ext_data_rw  4096 2026-11-26 20:10 controlmap
+-rw-rw---- 1 u0_a192 ext_data_rw 12826 2026-11-26 20:13 latestlog.txt
+-rw-rw---- 1 u0_a192 ext_data_rw   145 2026-11-26 20:12 launcher-log.txt
+drwxrws--- 2 u0_a192 ext_data_rw  4096 2026-11-26 20:10 lwjgl3
+
+/sdcard/Android/data/net.kdt.pojavlaunch.debug/files/.minecraft:
+total 48
+drwxrws--- 4 u0_a192 ext_data_rw 4096 2026-11-26 20:12 .
+drwxrws--- 7 u0_a192 ext_data_rw 4096 2026-11-26 20:12 ..
+drwxrws--- 2 u0_a192 ext_data_rw 4096 2026-11-26 20:12 config
+-rw-r--r-- 1 shell   ext_data_rw  186 2026-11-26 20:11 launcher_profiles.json
+-rw-rw---- 1 u0_a192 ext_data_rw 1887 2026-11-26 20:12 options.txt
+drwxrws--- 3 shell   ext_data_rw 4096 2026-11-26 20:11 versions
+ls: files/runtimes: No such file or directory
+total 16
+drwxrwx--x  2 u0_a192 u0_a192 4096 2026-11-26 20:10 .
+drwx------ 11 u0_a192 u0_a192 4096 2026-11-26 20:11 ..

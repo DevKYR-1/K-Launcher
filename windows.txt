@@ -1,0 +1,12 @@
+  Window #0 Window{75eb4ca u0 ScreenDecorOverlayBottom}:
+  Window #1 Window{766aabe u0 ScreenDecorOverlay}:
+  Window #2 Window{f02dc48 u0 SecondaryHomeHandle0}:
+  Window #3 Window{f272473 u0 EdgeBackGestureHandler0}:
+  Window #4 Window{22b2fd2 u0 NavigationBar0}:
+  Window #5 Window{55c2cbe u0 NotificationShade}:
+  Window #6 Window{f341517 u0 StatusBar}:
+  Window #7 Window{2d12743 u0 ShellDropTarget}:
+  Window #8 Window{1b3b062 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}:
+  Window #9 Window{5b71e60 u0 InputMethod}:
+  Window #10 Window{69faf5f u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}:
+  Window #11 Window{5a37777 u0 com.android.systemui.wallpapers.ImageWallpaper}:
